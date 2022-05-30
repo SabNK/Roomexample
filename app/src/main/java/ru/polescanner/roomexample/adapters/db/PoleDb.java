@@ -3,9 +3,12 @@ package ru.polescanner.roomexample.adapters.db;
 import androidx.annotation.NonNull;
 import androidx.room.Embedded;
 import androidx.room.Entity;
+import androidx.room.ForeignKey;
 import androidx.room.Ignore;
+import androidx.room.Index;
 import androidx.room.Insert;
 import androidx.room.Junction;
+import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 import androidx.room.Relation;
 import androidx.room.Transaction;
@@ -30,98 +33,113 @@ public class PoleDb extends EntityDb {
     public String avatar;
 
     @Ignore
-    public Map<PolePositionDb,ConductorDb> layout = new HashMap<>();
+    public Map<PolePosition, ConductorDb> layout = new HashMap<>();
 
-
-    public PoleDb(){};
+    public PoleDb() {
+        layout = new HashMap<>();
+    }
 
     @Ignore
     public PoleDb(@NonNull String id, int version, String name,
-                  String avatar, Map<PolePositionDb, ConductorDb> layout) {
+                  String avatar, Map<PolePosition, ConductorDb> layout) {
         super(id, version);
         this.name = name;
         this.avatar = avatar;
         this.layout = layout;
     }
 
-    public Description description(String s){ return new Image(s);}
+    public Description description(String s) {
+        return new Image(s);
+    }
 
     @androidx.room.Dao
     public interface Dao extends EntityDb.Dao<PoleDb> {
 
+        @Override
         @Transaction
         default void add(PoleDb... polesDbs) {
-            addWithoutLayout(polesDbs);
-            List<Layout> layouts = new ArrayList<>();
-            for (PoleDb poleDb : polesDbs)
-                layouts.add(new Layout(poleDb, poleDb.layout));
-            addLayout(layouts.toArray(new Layout[0]));
+            List<ConductorDb> conductorsToAdd = new ArrayList<>();
+            List<ConductorAttachDb> attaches = new ArrayList<>();
+            for (PoleDb p : polesDbs)
+                if (p.layout != null) {
+                    conductorsToAdd.addAll(p.layout.values());
+                    for (Map.Entry<PolePosition, ConductorDb> entry : p.layout.entrySet()) {
+                        PolePosition pp = entry.getKey();
+                        ConductorDb c = entry.getValue();
+                        attaches.add(new ConductorAttachDb(p.id, pp, c.id));
+                    }
+                }
+            addSimple(polesDbs);
+            addSimple(conductorsToAdd.toArray(new ConductorDb[0]));
+            addSimple(attaches.toArray(new ConductorAttachDb[0]));
         }
 
-        @Insert
-        void addWithoutLayout(PoleDb... poleDbs);
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        void addSimple(PoleDb... poleDbs);
 
-        default void addLayout(Layout... poleLayouts){
-            List<PositionDb> positionDbs = new ArrayList<>();
-            for (Layout layout : poleLayouts)
-                for (Map.Entry<PolePositionDb, ConductorDb> entry : layout.positions.entrySet())
-                    positionDbs.add(new PositionDb(layout.poleDb.id,
-                                                   entry.getKey(),
-                                                   entry.getValue().id));
-            addPosition(positionDbs.toArray(new PositionDb[0]));
-        }
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        void addSimple(ConductorDb... conductorDbs);
 
-        @Insert
-        void addPosition(PositionDb... positionDbs);
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        void addSimple(ConductorAttachDb... attaches);
+
 
         @Override
         @Transaction
-        default List<PoleDb> getAll(){
-            List<PoleDb> poleDbs = getAllWithoutLayout();
-            List<Layout> layouts = getLayouts();
-            for (PoleDb poleDb : poleDbs)
-                for (Layout layout : layouts)
-                    if (layout.poleDb == poleDb)
-                        poleDb.layout = layout.positions;
+        default List<PoleDb> getAll() {
+            List<PoleDb> poleDbs = getAllSimple();
+            List<ConductorAttachApp> attaches = getAllAttaches();
+            for (ConductorAttachApp a : attaches) {
+                int j = poleDbs.indexOf(a.poleDb);
+                poleDbs.get(j).layout.put(a.position, a.conductorDb);
+            }
             return poleDbs;
         }
 
         @Query("SELECT * FROM poles")
-        List<PoleDb> getAllWithoutLayout();
+        List<PoleDb> getAllSimple();
+
+        @Query( "SELECT * FROM pole_attaches " +
+                "JOIN conductors ON pole_attaches.conductorId = conductors.id " +
+                "JOIN poles ON pole_attaches.poleId = poles.id ")
+        List<ConductorAttachApp> getAllAttaches();
+
+        @Override
+        @Transaction
+        default PoleDb getById(String poleDbId) {
+            PoleDb poleDb = getByIdSimple(poleDbId);
+            List<ConductorAttachApp> attaches = getByIdAttaches(poleDbId);
+            for (ConductorAttachApp a : attaches)
+                poleDb.layout.put(a.position, a.conductorDb);
+            return poleDb;
+        }
+
+        @Query("SELECT * FROM poles WHERE id = :poleDbId")
+        PoleDb getByIdSimple(String poleDbId);
 
 
-        @Query( "SELECT * FROM pole_positions " +
-                "JOIN conductors ON pole_positions.conductorId = conductors.id " +
-                "JOIN poles ON pole_positions.poleId = poles.id "
-                )
-        List<Layout> getLayouts();
-
-        //ToDo for the future methods of Repository interface
-        @Query( "SELECT * FROM pole_positions " +
-                "JOIN conductors ON pole_positions.conductorId = conductors.id " +
-                "JOIN poles ON pole_positions.poleId = poles.id " +
-                "WHERE poleId = :poleId ")
-        Layout getLayout(String poleId);
+        @Query( "SELECT * FROM pole_attaches " +
+                "JOIN conductors ON pole_attaches.conductorId = conductors.id " +
+                "JOIN poles ON pole_attaches.poleId = poles.id "+
+                "WHERE poleId = :poleDbId")
+        List<ConductorAttachApp> getByIdAttaches(String poleDbId);
 
 
         //ToDo Refer to todo in the head of PoleSnapshot Class below
-        @Query("SELECT name, avatar FROM poles")
+        @Query("SELECT id, name, avatar FROM poles")
         List<PoleSnapshot> getSnapshots();
     }
 
     public static class Mapper implements ru.polescanner.roomexample.adapters.Mapper<Pole, PoleDb> {
         ru.polescanner.roomexample.adapters.Mapper<Conductor, ConductorDb>
                 conductorDbMapper = new ConductorDb.Mapper();
-        ru.polescanner.roomexample.adapters.Mapper<PolePosition, PolePositionDb>
-                polePositionDbMapper = new PolePositionDb.Mapper();
 
         @Override
         public PoleDb mapTo(Pole pole) {
-            Map<PolePositionDb, ConductorDb> layout = new HashMap<>();
-            for (Map.Entry<PolePosition, Conductor>  entry : pole.getLayout().entrySet()){
-                layout.put(polePositionDbMapper.mapTo(entry.getKey()),
+            Map<PolePosition, ConductorDb> layout = new HashMap<>();
+            for (Map.Entry<PolePosition, Conductor> entry : pole.getLayout().entrySet())
+                layout.put(entry.getKey(),
                            conductorDbMapper.mapTo(entry.getValue()));
-            }
             return new PoleDb(pole.getId().toString(),
                               pole.getVersion(),
                               pole.getName(),
@@ -132,10 +150,9 @@ public class PoleDb extends EntityDb {
         @Override
         public Pole mapFrom(PoleDb poleDb) {
             Map<PolePosition, Conductor> layout = new HashMap<>();
-            for (Map.Entry<PolePositionDb, ConductorDb> entry : poleDb.layout.entrySet()){
-                layout.put(polePositionDbMapper.mapFrom(entry.getKey()),
-                           conductorDbMapper.mapFrom(entry.getValue()));
-            }
+            for (Map.Entry<PolePosition, ConductorDb> entry : poleDb.layout.entrySet())
+                layout.put( entry.getKey(),
+                            conductorDbMapper.mapFrom(entry.getValue()));
             return new Pole(UUID.fromString(poleDb.id),
                             poleDb.version,
                             new Pole.Polename(poleDb.name),
@@ -144,58 +161,58 @@ public class PoleDb extends EntityDb {
         }
     }
 
+    @Entity(tableName = "pole_attaches",
+            primaryKeys = {"poleId", "position"},
+            indices = {@Index("poleId"), @Index("conductorId")},
+            foreignKeys = { @ForeignKey(entity = PoleDb.class,
+                                        parentColumns = "id",
+                                        childColumns = "poleId",
+                                        onDelete = ForeignKey.CASCADE),
+                            @ForeignKey(entity = ConductorDb.class,
+                                        parentColumns = "id",
+                                        childColumns = "conductorId",
+                                        onDelete = ForeignKey.CASCADE)})
+    static class ConductorAttachDb {
+        @NonNull
+        String poleId;
+        @NonNull
+        PolePosition position;
+        String conductorId;
 
+        public ConductorAttachDb() {}
+
+        @Ignore
+        public ConductorAttachDb(@NonNull String poleId,
+                                 @NonNull PolePosition position,
+                                 String conductorId) {
+            this.poleId = poleId;
+            this.position = position;
+            this.conductorId = conductorId;
+        }
+    }
+
+    static class ConductorAttachApp {
+        @Junction(value = ConductorAttachDb.class, parentColumn = "poleId", entityColumn = "id")
+        PoleDb poleDb;
+        PolePosition position;
+        @Relation(parentColumn = "conductorId", entityColumn = "id")
+        ConductorDb conductorDb;
+    }
 }
+
 //ToDo Idea from SecureByDesign and MurphyRoom page 32
 class PoleSnapshot {
+    public final String id;
     public final String name;
     public final String avatar;
 
-    public PoleSnapshot(String name, String avatar) {
+    public PoleSnapshot(String id, String name, String avatar) {
+        this.id = id;
         this.name = name;
         this.avatar = avatar;
     }
 }
 
-@Entity(tableName = "pole_positions", primaryKeys = {"poleId", "position"})
-class PositionDb {
-    @NonNull
-    String poleId;
-    @NonNull
-    PolePositionDb position;
-    //ToDo The column conductorId in the junction entity ru.polescanner.roomexample.adapters.db.PositionDb
-    // is being used to resolve a relationship but it is not covered by any index.
-    // This might cause a full table scan when resolving the relationship, it is highly advised
-    // to create an index that covers this column. String conductorId;
-    String conductorId;
-
-    public PositionDb() {}
-
-    @Ignore
-    public PositionDb(@NonNull String poleId, @NonNull PolePositionDb position, String conductorId) {
-        this.poleId = poleId;
-        this.position = position;
-        this.conductorId = conductorId;
-    }
-}
 
 
-class Layout{
-    @Embedded
-    PoleDb poleDb;
-    @Relation(  parentColumn = "id",
-                entity = ConductorDb.class,
-                entityColumn = "id",
-                associateBy = @Junction(value = PositionDb.class,
-                                        parentColumn = "poleId",
-                                        entityColumn = "conductorId"))
-    Map<PolePositionDb, ConductorDb> positions;
 
-    public Layout() {}
-
-    @Ignore
-    public Layout(PoleDb poleDb, Map<PolePositionDb, ConductorDb> positions) {
-        this.poleDb = poleDb;
-        this.positions = positions;
-    }
-}

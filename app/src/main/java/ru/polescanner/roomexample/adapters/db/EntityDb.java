@@ -40,6 +40,8 @@ public abstract class EntityDb {
 
         List<E> getAll();
 
+        E getById(String id);
+
         void add(E... e);
     }
 }

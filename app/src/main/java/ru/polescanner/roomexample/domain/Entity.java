@@ -9,6 +9,7 @@ import java.util.UUID;
 public abstract class Entity {
     private final UUID id;
     private int version;
+    private static int instanceCount;
 
     public Entity(UUID entityId, int entityVersion){
         notNull(entityId);
@@ -16,6 +17,7 @@ public abstract class Entity {
         inclusiveBetween(0, 10000, entityVersion,
                          "version not negative and less than 10000");
         this.version = entityVersion;
+        instanceCount++;
     }
     protected void incrementVersion(){
         this.version++;
@@ -42,5 +44,9 @@ public abstract class Entity {
     public int getVersion(){
         /*An integer version for the entity*/
         return this.version;
+    }
+
+    public static int getNumOfInstances(){
+        return instanceCount;
     }
 }

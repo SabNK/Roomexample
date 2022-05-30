@@ -1,5 +1,6 @@
 package ru.polescanner.roomexample.adapters;
 
+import java.util.Arrays;
 import java.util.List;
 
 import ru.polescanner.roomexample.adapters.db.EntityDb;
@@ -13,14 +14,18 @@ public class RepositoryPoleDb extends RepositoryDb<Pole, PoleDb> {
     }
 
     @Override
-    public void add(Pole p) {
-        PoleDb pdb = this.mapper.mapTo(p);
-        dbDao.add(pdb);
+    public void add(Pole... p) {
+        List<PoleDb> pdbs = this.listMapper.mapTo(Arrays.asList(p));
+        dbDao.add(pdbs.toArray(new PoleDb[0]));
     }
 
     @Override
     public List<Pole> getAll() {
-        ListMapper<Pole, PoleDb> listMapper = new ListMapperImpl<>(mapper);
         return listMapper.mapFrom(dbDao.getAll());
+    }
+
+    @Override
+    public Pole getById(String id) {
+        return mapper.mapFrom(dbDao.getById(id));
     }
 }

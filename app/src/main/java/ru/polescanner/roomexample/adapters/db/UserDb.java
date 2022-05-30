@@ -48,6 +48,9 @@ public class UserDb /*extends EntityDb*/ {
 
         @Insert
         void add(UserDb... uDb);
+
+        @Query("SELECT * FROM users WHERE uid = :userId")
+        UserDb getById(String userId);
     }
 
     public static class Mapper implements ru.polescanner.roomexample.adapters.Mapper<User, UserDb> {
