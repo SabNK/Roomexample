@@ -51,6 +51,10 @@ public class Pole extends Entity{
         return layout;
     }
 
+    public void attachConductor(PolePosition polePosition, Conductor conductor){
+        layout.put(polePosition, conductor);
+    }
+
     //INNER CLASSES
     public static class Polename extends Name{
         private static final int POLENAME_MIN_LENGTH = 2;

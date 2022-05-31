@@ -1,5 +1,7 @@
 package ru.polescanner.roomexample.adapters.db;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.room.Embedded;
 import androidx.room.Entity;
@@ -15,8 +17,10 @@ import androidx.room.Transaction;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import ru.polescanner.roomexample.domain.Conductor;
@@ -88,20 +92,34 @@ public class PoleDb extends EntityDb {
         @Transaction
         default List<PoleDb> getAll() {
             List<PoleDb> poleDbs = getAllSimple();
+            List<ConductorDb> conductorDbs = getAllConductorsSimple();
             List<ConductorAttachApp> attaches = getAllAttaches();
+                List<ConductorDb> cList = new ArrayList<>();
+            Log.d("SabNK", "Attaches: " + String.valueOf(attaches.size()));
+            Log.d("SabNK", "Conductors: " + String.valueOf(conductorDbs.size()));
             for (ConductorAttachApp a : attaches) {
-                int j = poleDbs.indexOf(a.poleDb);
-                poleDbs.get(j).layout.put(a.position, a.conductorDb);
+                int p_index = poleDbs.indexOf(a.poleDb);
+                int c_index = conductorDbs.indexOf(a.conductorDb);
+                poleDbs.get(p_index).layout.put(a.position,
+                                                conductorDbs.get(c_index));
+                //boolean t = cList.stream().anyMatch(x -> x == a.conductorDb);
+                //if (!t) cList.add(a.conductorDb);
             }
+            //Log.d("SabNK", String.valueOf(cList.size()));
             return poleDbs;
         }
 
         @Query("SELECT * FROM poles")
         List<PoleDb> getAllSimple();
 
-        @Query( "SELECT * FROM pole_attaches " +
-                "JOIN conductors ON pole_attaches.conductorId = conductors.id " +
-                "JOIN poles ON pole_attaches.poleId = poles.id ")
+        @Query("SELECT * FROM conductors")
+        List<ConductorDb> getAllConductorsSimple();
+
+        @Query( "SELECT p.id AS p_id, p.version AS p_version, p.name AS p_name, p.avatar AS p_avatar, " +
+                "       c.id AS c_id, c.version AS c_version, c.alias AS c_alias, c.voltage AS c_voltage," +
+                "       pole_attaches.position FROM pole_attaches " +
+                "JOIN conductors AS c ON pole_attaches.conductorId = c.id " +
+                "JOIN poles AS p ON pole_attaches.poleId = p.id ")
         List<ConductorAttachApp> getAllAttaches();
 
         @Override
@@ -118,9 +136,11 @@ public class PoleDb extends EntityDb {
         PoleDb getByIdSimple(String poleDbId);
 
 
-        @Query( "SELECT * FROM pole_attaches " +
-                "JOIN conductors ON pole_attaches.conductorId = conductors.id " +
-                "JOIN poles ON pole_attaches.poleId = poles.id "+
+        @Query( "SELECT p.id AS p_id, p.version AS p_version, p.name AS p_name, p.avatar AS p_avatar, " +
+                "       c.id AS c_id, c.version AS c_version, c.alias AS c_alias, c.voltage AS c_voltage," +
+                "       pole_attaches.position FROM pole_attaches " +
+                "JOIN conductors AS c ON pole_attaches.conductorId = c.id " +
+                "JOIN poles AS p ON pole_attaches.poleId = p.id "+
                 "WHERE poleId = :poleDbId")
         List<ConductorAttachApp> getByIdAttaches(String poleDbId);
 
@@ -192,10 +212,10 @@ public class PoleDb extends EntityDb {
     }
 
     static class ConductorAttachApp {
-        @Junction(value = ConductorAttachDb.class, parentColumn = "poleId", entityColumn = "id")
+        @Embedded(prefix = "p_")
         PoleDb poleDb;
         PolePosition position;
-        @Relation(parentColumn = "conductorId", entityColumn = "id")
+        @Embedded(prefix = "c_")
         ConductorDb conductorDb;
     }
 }

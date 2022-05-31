@@ -1,5 +1,7 @@
 package ru.polescanner.roomexample.domain;
 
+import static org.apache.commons.lang3.Validate.notNull;
+
 import java.util.UUID;
 
 public class Conductor extends Entity {
@@ -10,6 +12,16 @@ public class Conductor extends Entity {
         super(entityId, entityVersion);
         this.alias = alias;
         this.voltage = voltage;
+    }
+
+    public static Conductor register(String conductorAlias,
+                                     Voltage conductorVoltage){
+        notNull(conductorVoltage, "Voltage is a must");
+        Conductor c = new Conductor(UUID.randomUUID(),
+                                    0,
+                                    new ConductorName(conductorAlias),
+                                    conductorVoltage);
+        return c;
     }
 
     public String getAlias() {
