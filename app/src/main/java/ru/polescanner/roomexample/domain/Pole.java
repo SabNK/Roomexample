@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public class Pole extends Entity{
+public class Pole extends Aggregate{
     private Polename name;
     protected Map<PolePosition, Conductor> layout;
     private Description avatar;
@@ -34,6 +34,7 @@ public class Pole extends Entity{
                           new HashMap<PolePosition, Conductor>(),
                           new Image(polePicture)
                           );
+        p.markNew();
         return p;
     }
 
@@ -53,6 +54,8 @@ public class Pole extends Entity{
 
     public void attachConductor(PolePosition polePosition, Conductor conductor){
         layout.put(polePosition, conductor);
+        incrementVersion();
+        markDirty();
     }
 
     //INNER CLASSES

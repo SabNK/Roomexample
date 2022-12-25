@@ -4,10 +4,10 @@ import java.util.Arrays;
 import java.util.List;
 
 import ru.polescanner.roomexample.adapters.db.EntityDb;
-import ru.polescanner.roomexample.domain.Entity;
+import ru.polescanner.roomexample.domain.Aggregate;
 import ru.polescanner.roomexample.domain.Repository;
 
-public abstract class RepositoryDb<I /*extends Entity*/, O /*extends EntityDb*/>
+public class RepositoryDb<I, O>
         implements Repository<I> {
 
     protected EntityDb.Dao<O> dbDao;

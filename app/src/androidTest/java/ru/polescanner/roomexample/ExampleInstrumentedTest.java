@@ -24,7 +24,7 @@ import ru.polescanner.roomexample.domain.Entity;
 import ru.polescanner.roomexample.domain.Pole;
 import ru.polescanner.roomexample.domain.PoleCollection;
 import ru.polescanner.roomexample.domain.PolePosition;
-import ru.polescanner.roomexample.domain.Repository;
+import ru.polescanner.roomexample.service.UnitOfWork;
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -34,7 +34,7 @@ import ru.polescanner.roomexample.domain.Repository;
 @RunWith(AndroidJUnit4.class)
 public class ExampleInstrumentedTest {
     private AppDatabase mDb;
-    private Repository<Pole> sut;
+    private UnitOfWork sut;
 
     @Before
     public void createDb(){
@@ -43,7 +43,10 @@ public class ExampleInstrumentedTest {
                 // Allowing main thread queries, just for testing.
                 .allowMainThreadQueries()
                 .build();
-        sut = new RepositoryPoleDb(mDb.poleDbDao(), new PoleDb.Mapper());
+        RepositoryPoleDb repo = new RepositoryPoleDb(mDb.poleDbDao(), new PoleDb.Mapper());
+        UnitOfWork.setUnitOfWork(repo);
+        sut = UnitOfWork.getCurrent();
+
     }
     @After
     public void closeDb() {
@@ -66,11 +69,12 @@ public class ExampleInstrumentedTest {
         p2.attachConductor(PolePosition.A, c1);
         p2.attachConductor(PolePosition.B, c2);
         p2.attachConductor(PolePosition.C, c3);
-        sut.add(p1, p2);
+        sut.commit();
+
 
         assertThat(Entity.getNumOfInstances()).isEqualTo(5);
         //ToDo https://enfuse.io/testing-java-collections-with-assertj/
-        List<Pole> all = sut.getAll();
+        List<Pole> all = sut.aRepository().getAll();
         assertThat(Entity.getNumOfInstances()).isEqualTo(13);
         assertThat(all).hasSize(2);
         assertThat(all.get(0)).isEqualTo(p1);
@@ -78,7 +82,7 @@ public class ExampleInstrumentedTest {
         assertThat(all.get(0).getLayout().values()).containsExactlyInAnyOrder(c1, c2, c3);
         assertThat(all.get(1).getLayout().keySet()).contains(PolePosition.B);
 
-        Pole one = sut.getById(p1Id);
+        Pole one = (Pole) sut.aRepository().getById(p1Id);
         assertThat(one).isEqualTo(p1);
         assertThat(one.getName()).isEqualTo("pole1");
         assertThat(one.getLayout().values()).containsExactlyInAnyOrder(c1, c2, c3);

@@ -6,7 +6,7 @@ import static org.apache.commons.lang3.Validate.notNull;
 import java.util.Objects;
 import java.util.UUID;
 
-public abstract class Entity {
+public abstract class Entity{
     private final UUID id;
     private int version;
     private static int instanceCount;

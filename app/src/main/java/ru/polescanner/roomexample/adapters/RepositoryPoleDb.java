@@ -5,9 +5,14 @@ import java.util.List;
 
 import ru.polescanner.roomexample.adapters.db.EntityDb;
 import ru.polescanner.roomexample.adapters.db.PoleDb;
+import ru.polescanner.roomexample.domain.Aggregate;
 import ru.polescanner.roomexample.domain.Pole;
+import ru.polescanner.roomexample.domain.Repository;
 
 public class RepositoryPoleDb extends RepositoryDb<Pole, PoleDb> {
+
+
+
     public RepositoryPoleDb(EntityDb.Dao<PoleDb> dbDao,
                             Mapper<Pole, PoleDb> mapper) {
         super(dbDao, mapper);
@@ -23,6 +28,8 @@ public class RepositoryPoleDb extends RepositoryDb<Pole, PoleDb> {
     public List<Pole> getAll() {
         return listMapper.mapFrom(dbDao.getAll());
     }
+
+
 
     @Override
     public Pole getById(String id) {

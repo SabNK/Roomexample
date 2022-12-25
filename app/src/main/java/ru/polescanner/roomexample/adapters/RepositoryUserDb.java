@@ -4,9 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import ru.polescanner.roomexample.adapters.db.EntityDb;
-import ru.polescanner.roomexample.adapters.db.PoleDb;
 import ru.polescanner.roomexample.adapters.db.UserDb;
-import ru.polescanner.roomexample.domain.Pole;
 import ru.polescanner.roomexample.domain.User;
 
 public class RepositoryUserDb extends RepositoryDb<User, UserDb> {
