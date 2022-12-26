@@ -43,10 +43,10 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        initRecyclerView();
-        loadUserList();
+        //initRecyclerView();
+        //loadUserList();
     }
-
+/*
     private void loadUserList() {
         AppDatabase db = AppDatabase.getDbInstance(this.getApplicationContext());
         List<UserDb> userDbList = db.userDbDao().getAll();
@@ -74,5 +74,5 @@ public class MainActivity extends AppCompatActivity {
         }
         super.onActivityResult(requestCode, resultCode, data);
     }
-
+*/
 }

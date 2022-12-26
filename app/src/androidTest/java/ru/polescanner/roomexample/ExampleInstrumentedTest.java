@@ -16,14 +16,17 @@ import static org.assertj.core.api.Assertions.*;
 
 import java.util.List;
 
-import ru.polescanner.roomexample.adapters.RepositoryPoleDb;
+import ru.polescanner.roomexample.adapters.RepositoryDb;
 import ru.polescanner.roomexample.adapters.db.AppDatabase;
+import ru.polescanner.roomexample.adapters.db.EntityDb;
 import ru.polescanner.roomexample.adapters.db.PoleDb;
+import ru.polescanner.roomexample.domain.Aggregate;
 import ru.polescanner.roomexample.domain.Conductor;
 import ru.polescanner.roomexample.domain.Entity;
 import ru.polescanner.roomexample.domain.Pole;
 import ru.polescanner.roomexample.domain.PoleCollection;
 import ru.polescanner.roomexample.domain.PolePosition;
+import ru.polescanner.roomexample.domain.Repository;
 import ru.polescanner.roomexample.service.UnitOfWork;
 
 /**
@@ -43,9 +46,21 @@ public class ExampleInstrumentedTest {
                 // Allowing main thread queries, just for testing.
                 .allowMainThreadQueries()
                 .build();
-        RepositoryPoleDb repo = new RepositoryPoleDb(mDb.poleDbDao(), new PoleDb.Mapper());
-        UnitOfWork.setUnitOfWork(repo);
-        sut = UnitOfWork.getCurrent();
+        try {
+            Repository<Pole> repo =
+                RepositoryDb.setRepository(
+                        mDb.poleDbDao(),
+                        new PoleDb.Mapper(),
+                        (Class<? extends Aggregate>) Class.forName("ru.polescanner.roomexample.domain.Pole"),
+                        (Class<? extends EntityDb>) Class.forName("ru.polescanner.roomexample.adapters.db.PoleDb"));
+            UnitOfWork.setUnitOfWork(
+                        repo,
+                        (Class<? extends Aggregate>) Class.forName("ru.polescanner.roomexample.domain.Pole"));
+            sut = UnitOfWork.getCurrent();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+
 
     }
     @After

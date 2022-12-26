@@ -5,6 +5,7 @@ import androidx.annotation.NonNull;
 import org.apache.commons.lang3.NotImplementedException;
 
 import java.io.InvalidObjectException;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,17 +15,20 @@ import ru.polescanner.roomexample.domain.Repository;
 public class UnitOfWork<A extends Aggregate> implements IUnitOfWork<A> {
     private static UnitOfWork uow;
     private Repository<A> repository;
+    private Class<A> aggregateClass;
 
     private List<A> newAggregates = new ArrayList<>();
     private List<A> dirtyAggregates = new ArrayList<>();
     private List<A> removeAggregates = new ArrayList<>();
 
-    private UnitOfWork(Repository<A> repository) {
+    private UnitOfWork(Repository<A> repository, Class<A> aggregateClass) {
         this.repository = repository;
+        this.aggregateClass = aggregateClass;
     }
 
-    public static void setUnitOfWork(Repository<? extends Aggregate> repository) {
-        uow = new UnitOfWork(repository);
+    public static void setUnitOfWork(Repository<? extends Aggregate> repository,
+                                     Class<? extends Aggregate> aggrecateClass) {
+        uow = new UnitOfWork(repository, aggrecateClass);
     }
 
     public static UnitOfWork getCurrent() {
@@ -88,7 +92,7 @@ public class UnitOfWork<A extends Aggregate> implements IUnitOfWork<A> {
     public void commit() {
         insertNew();
         updateDirty();
-        deleteRemoved();
+        //deleteRemoved();
     }
 
     private void deleteRemoved() {
@@ -96,15 +100,18 @@ public class UnitOfWork<A extends Aggregate> implements IUnitOfWork<A> {
     }
 
     private void updateDirty() {
-        A[] array = (A[]) new Object[newAggregates.size()];
-        repository.add(dirtyAggregates.toArray(array));
+        repository.add(toArray(dirtyAggregates));
     }
 
     private void insertNew() {
-        A[] array = (A[]) new Object[newAggregates.size()];
-        repository.add(newAggregates.toArray(array));
+        repository.add(toArray(newAggregates));
     }
 
+    private A[] toArray(List<A> list) {
+        @SuppressWarnings("unchecked")
+        final A[] array = (A[]) Array.newInstance(aggregateClass, list.size());
+        return list.toArray(array);
+    }
 
     @Override
     public void rollback() {
