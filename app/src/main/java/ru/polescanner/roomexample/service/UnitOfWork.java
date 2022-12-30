@@ -15,20 +15,20 @@ import ru.polescanner.roomexample.domain.Repository;
 public class UnitOfWork<A extends Aggregate> implements IUnitOfWork<A> {
     private static UnitOfWork uow;
     private Repository<A> repository;
-    private Class<A> aggregateClass;
+    private Class<A> classAggregate;
 
     private List<A> newAggregates = new ArrayList<>();
     private List<A> dirtyAggregates = new ArrayList<>();
     private List<A> removeAggregates = new ArrayList<>();
 
-    private UnitOfWork(Repository<A> repository, Class<A> aggregateClass) {
+    private UnitOfWork(Repository<A> repository, Class<A> classAggregate) {
         this.repository = repository;
-        this.aggregateClass = aggregateClass;
+        this.classAggregate = classAggregate;
     }
 
     public static void setUnitOfWork(Repository<? extends Aggregate> repository,
-                                     Class<? extends Aggregate> aggrecateClass) {
-        uow = new UnitOfWork(repository, aggrecateClass);
+                                     Class<? extends Aggregate> classAggregate) {
+        uow = new UnitOfWork(repository, classAggregate);
     }
 
     public static UnitOfWork getCurrent() {
@@ -109,7 +109,7 @@ public class UnitOfWork<A extends Aggregate> implements IUnitOfWork<A> {
 
     private A[] toArray(List<A> list) {
         @SuppressWarnings("unchecked")
-        final A[] array = (A[]) Array.newInstance(aggregateClass, list.size());
+        final A[] array = (A[]) Array.newInstance(classAggregate, list.size());
         return list.toArray(array);
     }
 
